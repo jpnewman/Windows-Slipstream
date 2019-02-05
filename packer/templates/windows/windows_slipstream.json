@@ -1,0 +1,124 @@
+{
+    "variables": {
+        "iso_url": "",
+        "iso_checksum": "",
+        "iso_checksum_type": "md5",
+
+        "guest_os_type": "",
+        "disk_size": "60000",
+
+        "headless": "true",
+
+        "communicator": "winrm",
+        "winrm_username": "Administrator",
+        "winrm_password": "vagrant",
+
+        "vm_name": "Windows_Slipstream_{{isotime \"2006-01-02\"}}",
+
+        "shutdown_command": "shutdown /s /t 10 /f /d p:4:1 /c \"Packer Shutdown\"",
+        "shutdown_timeout": "1h",
+
+        "autounattend": "{{template_dir}}/../../files/answer_files/server_2016/with_updates/Autounattend.xml",
+
+        "guest_additions_path": "C:\\Windows\\Temp\\VBoxGuestAdditions.iso"
+    },
+    "builders": [{
+        "type": "virtualbox-iso",
+        "vboxmanage": [
+            ["modifyvm", "{{.Name}}", "--memory", "2048"],
+            ["modifyvm", "{{.Name}}", "--vram", "48"],
+            ["modifyvm", "{{.Name}}", "--cpus", "2"]
+        ],
+        "guest_os_type": "{{user `guest_os_type`}}",
+        "iso_url": "{{user `iso_url`}}",
+        "iso_checksum": "{{user `iso_checksum`}}",
+        "iso_checksum_type": "{{user `iso_checksum_type`}}",
+        "vm_name": "{{user `vm_name`}}",
+        "disk_size": "{{user `disk_size`}}",
+        "headless": "{{user `headless`}}",
+        "communicator": "{{user `communicator`}}",
+        "winrm_username": "{{user `winrm_username`}}",
+        "winrm_password": "{{user `winrm_password`}}",
+        "winrm_timeout": "12h",
+        "guest_additions_mode": "upload",
+        "guest_additions_path": "{{user `guest_additions_path`}}",
+        "shutdown_command": "{{user `shutdown_command`}}",
+        "shutdown_timeout": "{{user `shutdown_timeout`}}",
+        "floppy_files": [
+            "{{user `autounattend`}}",
+            "{{template_dir}}/../../provisioners/powershell/unattend-windows-updates.ps1",
+            "{{template_dir}}/../../provisioners/powershell/unattend-enable-winrm.ps1",
+            "{{template_dir}}/../../files/certs/oracle-cert.cer"
+        ]
+    }],
+    "provisioners": [{
+            "type": "powershell",
+            "script": "{{template_dir}}/../../provisioners/powershell/configure-windows.ps1",
+            "valid_exit_codes": [0, 3010]
+        },
+        {
+            "type": "windows-restart",
+            "restart_timeout": "1h"
+        },
+        {
+            "type": "powershell",
+            "environment_vars": [
+                "INSTALLER_TYPE=EXE",
+                "INSTALL_FROM=URL",
+                "INSTALLER_DISPLAYNAME=Windows Assessment and Deployment Kit - Windows 10",
+                "INSTALL_EXE_ARGUMENTS=/quiet /features OptionId.DeploymentTools OptionId.ImagingAndConfigurationDesigner OptionId.ICDConfigurationDesigner OptionId.UserStateMigrationTool",
+                "INSTALLER_URI=https://go.microsoft.com/fwlink/?linkid=2026036",
+                "INSTALLER_NAME=adksetup.exe"
+            ],
+            "scripts": [
+                "{{template_dir}}/../../provisioners/powershell/install-from.ps1"
+            ]
+        },
+        {
+            "only": ["virtualbox-iso"],
+            "type": "powershell",
+            "environment_vars": [
+                "INSTALLER_TYPE=ISO",
+                "INSTALLER_NAME=VBoxWindowsAdditions.exe",
+                "INSTALL_CERTS=A:\\oracle-cert.cer",
+                "INSTALL_EXE_ARGUMENTS=/S",
+                "INSTALLER_DISPLAYNAME=Oracle VM VirtualBox Guest Additions 5.2.26",
+                "INSTALLER_URI=file://{{user `guest_additions_path`}}"
+            ],
+            "scripts": [
+                "{{template_dir}}/../../provisioners/powershell/install-from.ps1"
+            ]
+        },
+        {
+            "type": "windows-restart",
+            "restart_timeout": "1h"
+        },
+        {
+            "only": ["virtualbox-iso"],
+            "type": "shell-local",
+            "command": "VBoxManage sharedfolder add Windows_Slipstream_2019-02-04 --name vagrant --hostpath $(realpath {{template_dir}}/../..//packer_cache) --readonly --automount --transient"
+        },
+        {
+            "type": "powershell",
+            "environment_vars": [
+                "UPDATE_FOLDER=\\\\VBOXSVR\\vagrant"
+            ],
+            "script": "{{template_dir}}/../../provisioners/powershell/slipstream-iso.ps1"
+        }
+    ],
+    "post-processors": [{
+        "type": "artifice",
+        "files": [
+            "C:\\slipstream\\WindowsServer2016_Patched.iso",
+            "C:\\slipstream\\robocopy.log",
+            "C:\\Windows\\Logs\\DISM\\dism.log"
+        ]
+    }, {
+        "only": ["virtualbox-iso"],
+        "type": "vagrant",
+        "keep_input_artifact": true,
+        "compression_level": 9,
+        "output": "{{user `guest_os_type`}}_{{isotime \"2006-01-02\"}}.box",
+        "vagrantfile_template": "{{template_dir}}/vagrantfile.template"
+    }]
+}
