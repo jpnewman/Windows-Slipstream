@@ -5,6 +5,10 @@ This repository contains an example of using Packer to create a Windows ISO imag
 
 The idea is to use Packer and Vagrant to slipstream updates into an existing ISO. This is done by creating a VirtualBox OS from the ISO, updating it, and then slipstreaming the updates into a new ISO.
 
+## Why vagrant is used
+
+Vagrant is used as it allows the loading and updating of the latest / previous ISO. This means that the updates can be installed from the updated Windows OS (i.e. ```C:\Windows\SoftwareDistribution\Download\```) and a new ISO created with them. Making the update process very meta.
+
 ## Create updated ISO from an existing ISO
 
 ## Setup
