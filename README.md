@@ -15,23 +15,56 @@ Download the latest ISO (e.g. 'Windows 2016') into folder ```packer_cache```.
 
 ### Download any extra updates
 
-Download any extra MSU and CAB files to folder ```packer_cache```.
+Download any extra MSU and CAB files to folder like ```packer_cache/updates/Windows2016_64```.
 
-### Generate MD5 for ISO
+### Get Oracle Cert
+
+This cert can be exported from a previously manually installed Oracle VM VirtualBox Guest Additions.
+
+### Environment Variables for ```slipstream-iso.ps1```
+
+|Environment Variables|Description|Default|
+|---|---|---|
+|```IMAGE_NAME```|This is a regular expression that is used to select the images inside the WIM.|```.*```|
+|```INSTALL_LIST_FILE```|Applies updates in the order they are listed within this file.|```_Updates.txt```|
+|```APPLY_INSTALLED_UPDATES```|Apply MSU and CAB files that are found on the guest OS in path ```C:\Windows\SoftwareDistribution\Download\``` ||
+|```UPDATE_FOLDER```|Path to installer folder. *e.g.* ```\\VBOXSVR\vagrant``` (**N.B.** Escape slashes in the Packer template)||
+
+#### Example ```INSTALL_LIST_FILE``` file
+
+~~~
+# Windows2016_64
+
+# Updates are installed in the below order.
+KB4465659
+KB4091664
+KB4480977
+~~~
+
+> Each uncommented line matches the first file found that contains the line text.
+> If this file does not exist in the root of the ```UPDATE_FOLDER``` all MSU and CAB files in the folder tree will be installed.
+
+### Packer ```windows_slipstream.json``` template variables
+
+|Template Variables|Description|
+|---|---|
+|```iso_url```|Path to a Windows ISO|
+|```iso_checksum```|Windows ISO MD5 checksum|
+|```guest_os_type```|VirtualBox Guest OS Type|
+|```installer_folder```|Path to MSU and CAB installer files|
+|```autounattend```|Path to Autounattend XML file|
+
+#### Generate MD5 from ISO for ```iso_checksum```
 
 ~~~
 md5 packer_cache/en_windows_server_2016_vl_x64_dvd_11636701.iso
 ~~~
 
-### Get ```guest_os_type```
+#### List VirtualBox Windows Guest Types for ```guest_os_type```
 
 ~~~
 VBoxManage list ostypes | grep -e '^ID' | sed -E -e "s/^ID:[[:blank:]]+//g" | grep -e 'Windows'
 ~~~
-
-### Get Oracle Cert
-
-This cert can be exported from a previously manually installed Oracle VM VirtualBox Guest Additions.
 
 ## Run
 
@@ -39,20 +72,34 @@ This cert can be exported from a previously manually installed Oracle VM Virtual
 cd packer/templates/windows
 ~~~
 
-> validate
+### validate
+
+*e.g.*
 
 ~~~
-packer validate -var headless=false -var 'iso_url=../../packer_cache/en_windows_server_2016_vl_x64_dvd_11636701.iso' -var 'iso_checksum=e3779d4b1574bf711b063fe457b3ba63' -var 'guest_os_type=Windows2016_64' windows_slipstream.json
+packer validate -var headless=false -var 'iso_url=../../packer_cache/en_windows_server_2016_vl_x64_dvd_11636701.iso' -var 'iso_checksum=e3779d4b1574bf711b063fe457b3ba63' -var 'guest_os_type=Windows2016_64' -var 'installer_folder=../../packer_cache/updates/Windows2016_64' windows_slipstream.json
 ~~~
 
-> build, debug
+### build, debug
+
+*e.g.*
 
 ~~~
-time PACKER_LOG=1 PACKER_LOG_PATH="windows_slipstream.log" packer build --on-error=ask -var headless=false -var 'iso_url=../../packer_cache/en_windows_server_2016_vl_x64_dvd_11636701.iso' -var 'iso_checksum=e3779d4b1574bf711b063fe457b3ba63' -var 'guest_os_type=Windows2016_64' windows_slipstream.json
+packer build --on-error=ask -var headless=false -var 'iso_url=../../packer_cache/en_windows_server_2016_vl_x64_dvd_11636701.iso' -var 'iso_checksum=e3779d4b1574bf711b063fe457b3ba63' -var 'guest_os_type=Windows2016_64' -var 'installer_folder=../../packer_cache/updates/Windows2016_64' windows_slipstream.json
 ~~~
 
-> Build, without updates
+### build, debug
+
+*e.g.*
 
 ~~~
-time PACKER_LOG=1 PACKER_LOG_PATH="windows_slipstream.log" packer build --on-error=ask -var headless=false -var 'iso_url=../../packer_cache/WindowsServer2016_Patched.iso' -var 'iso_checksum=1ce3167bd232c901c5a236ef36544b4b' -var 'guest_os_type=Windows2016_64' -var 'autounattend=../../files/answer_files/server_2016/without_updates/Autounattend.xml' --force windows_slipstream.json
+time PACKER_LOG=1 PACKER_LOG_PATH="windows_slipstream.log" packer build --on-error=ask -var headless=false -var 'iso_url=../../packer_cache/en_windows_server_2016_vl_x64_dvd_11636701.iso' -var 'iso_checksum=e3779d4b1574bf711b063fe457b3ba63' -var 'guest_os_type=Windows2016_64' -var 'installer_folder=../../packer_cache/updates/Windows2016_64' windows_slipstream.json
+~~~
+
+### Build, debug without updates
+
+*e.g.*
+
+~~~
+time PACKER_LOG=1 PACKER_LOG_PATH="windows_slipstream.log" packer build --on-error=ask -var headless=false -var 'iso_url=../../packer_cache/WindowsServer2016_Patched.iso' -var 'iso_checksum=1ce3167bd232c901c5a236ef36544b4b' -var 'guest_os_type=Windows2016_64' -var 'installer_folder=../../packer_cache/updates/Windows2016_64' -var 'autounattend=../../files/answer_files/server_2016/without_updates/Autounattend.xml' --force windows_slipstream.json
 ~~~

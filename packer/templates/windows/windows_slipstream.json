@@ -20,7 +20,9 @@
 
         "autounattend": "{{template_dir}}/../../files/answer_files/server_2016/with_updates/Autounattend.xml",
 
-        "guest_additions_path": "C:\\Windows\\Temp\\VBoxGuestAdditions.iso"
+        "guest_additions_path": "C:\\Windows\\Temp\\VBoxGuestAdditions.iso",
+
+        "installer_folder": "{{template_dir}}/../../packer_cache"
     },
     "builders": [{
         "type": "virtualbox-iso",
@@ -96,7 +98,7 @@
         {
             "only": ["virtualbox-iso"],
             "type": "shell-local",
-            "command": "VBoxManage sharedfolder add Windows_Slipstream_2019-02-04 --name vagrant --hostpath $(realpath {{template_dir}}/../..//packer_cache) --readonly --automount --transient"
+            "command": "VBoxManage sharedfolder add Windows_Slipstream_2019-02-04 --name vagrant --hostpath $(realpath {{user `installer_folder`}}) --readonly --automount --transient"
         },
         {
             "type": "powershell",
