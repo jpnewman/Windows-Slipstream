@@ -99,7 +99,7 @@
         {
             "only": ["virtualbox-iso"],
             "type": "shell-local",
-            "command": "VBoxManage sharedfolder add ${{user `vm_name`}} --name vagrant --hostpath $(realpath {{user `installer_folder`}}) --readonly --automount --transient"
+            "command": "VBoxManage sharedfolder add {{user `vm_name`}} --name vagrant --hostpath $(realpath {{user `installer_folder`}}) --readonly --automount --transient"
         },
         {
             "type": "powershell",
@@ -113,7 +113,7 @@
     "post-processors": [{
         "type": "artifice",
         "files": [
-            "C:\\slipstream\\${{user `iso_output_name`}}",
+            "C:\\slipstream\\{{user `iso_output_name`}}",
             "C:\\slipstream\\robocopy.log",
             "C:\\Windows\\Logs\\DISM\\dism.log"
         ]
