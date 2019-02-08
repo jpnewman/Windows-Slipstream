@@ -8,7 +8,7 @@ $script:oscdimg = Join-Path -Path "${script:adkBasePath}" -ChildPath "Oscdimg"
 
 $script:windowsUpdatesPath = "C:\Windows\SoftwareDistribution\Download\"
 
-$script:outputISOName = "WindowsServer2016_Patched.iso"
+$script:outputISOName = if ([String]::IsNullOrEmpty($env:ISO_OUTPUT_NAME)) { "WindowsServer2016_Patched.iso" } else { $env:ISO_OUTPUT_NAME }
 
 $script:WorkingSubFolders = @(
     'original',

@@ -43,6 +43,7 @@ C:\Program Files\Oracle\VirtualBox
 |```INSTALL_LIST_FILE```|Applies updates in the order they are listed within this file.|```_Updates.txt```|
 |```APPLY_INSTALLED_UPDATES```|Apply MSU and CAB files that are found on the guest OS in path ```C:\Windows\SoftwareDistribution\Download\``` ||
 |```UPDATE_FOLDER```|Path to installer folder. *e.g.* ```\\VBOXSVR\vagrant``` (**N.B.** Escape slashes in the Packer template)||
+|```ISO_OUTPUT_NAME```|ISO output filename.|```WindowsServer2016_Patched.iso```|
 
 #### Example ```INSTALL_LIST_FILE``` file
 

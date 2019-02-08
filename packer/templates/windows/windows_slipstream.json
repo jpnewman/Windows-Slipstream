@@ -19,6 +19,7 @@
         "shutdown_timeout": "1h",
 
         "autounattend": "{{template_dir}}/../../files/answer_files/server_2016/with_updates/Autounattend.xml",
+        "iso_output_name": "WindowsServer2016_Patched.iso",
 
         "guest_additions_path": "C:\\Windows\\Temp\\VBoxGuestAdditions.iso",
 
@@ -98,12 +99,13 @@
         {
             "only": ["virtualbox-iso"],
             "type": "shell-local",
-            "command": "VBoxManage sharedfolder add Windows_Slipstream_2019-02-04 --name vagrant --hostpath $(realpath {{user `installer_folder`}}) --readonly --automount --transient"
+            "command": "VBoxManage sharedfolder add ${{user `vm_name`}} --name vagrant --hostpath $(realpath {{user `installer_folder`}}) --readonly --automount --transient"
         },
         {
             "type": "powershell",
             "environment_vars": [
-                "UPDATE_FOLDER=\\\\VBOXSVR\\vagrant"
+                "UPDATE_FOLDER=\\\\VBOXSVR\\vagrant",
+                "ISO_OUTPUT_NAME={{user `iso_output_name`}}"
             ],
             "script": "{{template_dir}}/../../provisioners/powershell/slipstream-iso.ps1"
         }
@@ -111,7 +113,7 @@
     "post-processors": [{
         "type": "artifice",
         "files": [
-            "C:\\slipstream\\WindowsServer2016_Patched.iso",
+            "C:\\slipstream\\${{user `iso_output_name`}}",
             "C:\\slipstream\\robocopy.log",
             "C:\\Windows\\Logs\\DISM\\dism.log"
         ]
