@@ -15,15 +15,25 @@ Vagrant is used as it allows the loading and updating of the latest / previous I
 
 ### Download Windows ISO
 
-Download the latest ISO (e.g. 'Windows 2016') into folder ```packer_cache```.
+Download the latest ISO (e.g. 'Windows 2016') into folder ```packer/packer_cache```.
 
 ### Download any extra updates
 
-Download any extra MSU and CAB files to folder like ```packer_cache/updates/Windows2016_64```.
+Download any extra MSU and CAB files to folder like ```packer/packer_cache/updates/Windows2016_64```.
 
 ### Get Oracle Cert
 
 This cert can be exported from a previously manually installed Oracle VM VirtualBox Guest Additions.
+
+### Windows
+
+Ensure that ```packer``` and ```VBoxManage``` are in the environment variables ```PATH```.
+
+e.g.
+
+~~~
+C:\Program Files\Oracle\VirtualBox
+~~~
 
 ### Environment Variables for ```slipstream-iso.ps1```
 
@@ -61,7 +71,13 @@ KB4480977
 #### Generate MD5 from ISO for ```iso_checksum```
 
 ~~~
-md5 packer_cache/en_windows_server_2016_vl_x64_dvd_11636701.iso
+md5 packer/packer_cache/en_windows_server_2016_vl_x64_dvd_11636701.iso
+~~~
+
+> Powershell
+
+~~~
+Get-FileHash .\packer\packer_cache\SW_DVD9_Win_Svr_STD_Core_and_DataCtr_Core_2016_64Bit_English_-3_MLF_X21-30350.ISO -Algorithm MD5
 ~~~
 
 #### List VirtualBox Windows Guest Types for ```guest_os_type```
@@ -84,6 +100,12 @@ cd packer/templates/windows
 packer validate -var headless=false -var 'iso_url=../../packer_cache/en_windows_server_2016_vl_x64_dvd_11636701.iso' -var 'iso_checksum=e3779d4b1574bf711b063fe457b3ba63' -var 'guest_os_type=Windows2016_64' -var 'installer_folder=../../packer_cache/updates/Windows2016_64' windows_slipstream.json
 ~~~
 
+> Powershell / CMD
+
+~~~
+packer validate -var headless=false -var "iso_url=..\..\packer_cache\SW_DVD9_Win_Svr_STD_Core_and_DataCtr_Core_2016_64Bit_English_-3_MLF_X21-30350.ISO" -var "iso_checksum=EEB465C08CF7243DBAAA3BE98F5F9E40" -var "guest_os_type=Windows2016_64" -var "installer_folder=..\..\packer_cache\updates\Windows2016_64" windows_slipstream.json
+~~~
+
 ### build, debug
 
 *e.g.*
@@ -92,7 +114,13 @@ packer validate -var headless=false -var 'iso_url=../../packer_cache/en_windows_
 packer build --on-error=ask -var headless=false -var 'iso_url=../../packer_cache/en_windows_server_2016_vl_x64_dvd_11636701.iso' -var 'iso_checksum=e3779d4b1574bf711b063fe457b3ba63' -var 'guest_os_type=Windows2016_64' -var 'installer_folder=../../packer_cache/updates/Windows2016_64' windows_slipstream.json
 ~~~
 
-### build, debug
+> Powershell / CMD
+
+~~~
+packer build -var headless=false -var "iso_url=..\..\packer_cache\SW_DVD9_Win_Svr_STD_Core_and_DataCtr_Core_2016_64Bit_English_-3_MLF_X21-30350.ISO" -var "iso_checksum=EEB465C08CF7243DBAAA3BE98F5F9E40" -var "guest_os_type=Windows2016_64" -var "installer_folder=..\..\packer_cache\updates\Windows2016_64" windows_slipstream.json
+~~~
+
+### build, timed debug
 
 *e.g.*
 
@@ -100,10 +128,34 @@ packer build --on-error=ask -var headless=false -var 'iso_url=../../packer_cache
 time PACKER_LOG=1 PACKER_LOG_PATH="windows_slipstream.log" packer build --on-error=ask -var headless=false -var 'iso_url=../../packer_cache/en_windows_server_2016_vl_x64_dvd_11636701.iso' -var 'iso_checksum=e3779d4b1574bf711b063fe457b3ba63' -var 'guest_os_type=Windows2016_64' -var 'installer_folder=../../packer_cache/updates/Windows2016_64' windows_slipstream.json
 ~~~
 
-### Build, debug without updates
+> Powershell / CMD (not timed)
+
+~~~
+mkdir "C:\Temp\"
+
+set PACKER_LOG=1
+set PACKER_LOG_PATH=C:\Temp\windows_slipstream.log
+
+packer build -var headless=false -var "iso_url=..\..\packer_cache\SW_DVD9_Win_Svr_STD_Core_and_DataCtr_Core_2016_64Bit_English_-3_MLF_X21-30350.ISO" -var "iso_checksum=EEB465C08CF7243DBAAA3BE98F5F9E40" -var "guest_os_type=Windows2016_64" -var "installer_folder=..\..\packer_cache\updates\Windows2016_64" windows_slipstream.json
+~~~
+
+### Build, timed debug without updates
+
+This is helpful when used with option ```installer_folder```.
 
 *e.g.*
 
 ~~~
 time PACKER_LOG=1 PACKER_LOG_PATH="windows_slipstream.log" packer build --on-error=ask -var headless=false -var 'iso_url=../../packer_cache/WindowsServer2016_Patched.iso' -var 'iso_checksum=1ce3167bd232c901c5a236ef36544b4b' -var 'guest_os_type=Windows2016_64' -var 'installer_folder=../../packer_cache/updates/Windows2016_64' -var 'autounattend=../../files/answer_files/server_2016/without_updates/Autounattend.xml' --force windows_slipstream.json
+~~~
+
+> Powershell / CMD (not timed)
+
+~~~
+mkdir "C:\Temp\"
+
+set PACKER_LOG=1
+set PACKER_LOG_PATH=C:\Temp\windows_slipstream.log
+
+packer build -var headless=false -var "iso_url=..\..\packer_cache\SW_DVD9_Win_Svr_STD_Core_and_DataCtr_Core_2016_64Bit_English_-3_MLF_X21-30350.ISO" -var "iso_checksum=EEB465C08CF7243DBAAA3BE98F5F9E40" -var "guest_os_type=Windows2016_64" -var "installer_folder=..\..\packer_cache\updates\Windows2016_64" -var "autounattend=../../files/answer_files/server_2016/without_updates/Autounattend.xml" windows_slipstream.json
 ~~~
