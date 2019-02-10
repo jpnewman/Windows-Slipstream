@@ -1,4 +1,4 @@
-param($global:RestartRequired=0,
+﻿param($global:RestartRequired=0,
         $global:MoreUpdates=0,
         $global:MaxCycles=5,
         $MaxUpdatesPerCycle=500)
@@ -9,7 +9,7 @@ function LogWrite {
    Param ([string]$logstring)
    $now = Get-Date -format s
    Add-Content $Logfile -value "$now $logstring"
-   Write-Host $logstring
+   Write-Verbose $logstring
 }
 
 function Check-ContinueRestartOrEnd() {

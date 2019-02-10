@@ -21,13 +21,9 @@
         "autounattend": "{{template_dir}}/../../files/answer_files/server_2016/with_updates/Autounattend.xml",
         "iso_output_name": "WindowsServer2016_Patched.iso",
 
-        "guest_additions_mode": "attach",
-        "guest_additions_install_uri": "file://E:\\VBoxWindowsAdditions.exe",
+        "temp_folder": "C:\\Windows\\Temp",
 
-        "share_path": "{{template_dir}}/packer_cache",
-        "updates_folder": "\\\\VBOXSVR\\vagrant\\Updates\\Windows2016_64",
-
-        "adk_installer_uri": "file://\\\\VBOXSVR\\vagrant\\Offline\\ADKoffline.zip"
+        "adk_installer_uri": "https://go.microsoft.com/fwlink/?linkid=2026036"
     },
     "builders": [{
         "type": "virtualbox-iso",
@@ -47,77 +43,53 @@
         "winrm_username": "{{user `winrm_username`}}",
         "winrm_password": "{{user `winrm_password`}}",
         "winrm_timeout": "12h",
-        "guest_additions_mode": "{{user `guest_additions_mode`}}",
+        "guest_additions_mode": "disable",
         "shutdown_command": "{{user `shutdown_command`}}",
         "shutdown_timeout": "{{user `shutdown_timeout`}}",
         "floppy_files": [
             "{{user `autounattend`}}",
             "{{template_dir}}/../../provisioners/powershell/unattend-windows-updates.ps1",
-            "{{template_dir}}/../../provisioners/powershell/unattend-enable-winrm.ps1",
-            "{{template_dir}}/../../provisioners/powershell/configure-windows.ps1",
-            "{{template_dir}}/../../files/certs/oracle-cert.cer"
+            "{{template_dir}}/../../provisioners/powershell/unattend-enable-winrm.ps1"
         ]
     }],
     "provisioners": [{
-            "only": ["virtualbox-iso"],
             "type": "powershell",
-            "environment_vars": [
-                "INSTALLER_TYPE=EXE",
-                "INSTALLER_NAME=VBoxWindowsAdditions.exe",
-                "INSTALL_CERTS=A:\\oracle-cert.cer",
-                "INSTALL_EXE_ARGUMENTS=/S",
-                "INSTALLER_DISPLAYNAME=Oracle VM VirtualBox Guest Additions 5.2.26",
-                "INSTALLER_URI={{user `guest_additions_install_uri`}}"
-            ],
-            "scripts": [
-                "{{template_dir}}/../../provisioners/powershell/install-from.ps1"
-            ]
+            "script": "{{template_dir}}/../../provisioners/powershell/configure-windows.ps1",
+            "valid_exit_codes": [0, 3010]
         },
         {
             "type": "windows-restart",
             "restart_timeout": "1h"
         },
         {
-            "only": ["virtualbox-iso"],
-            "type": "shell-local",
-            "command": "VBoxManage sharedfolder add {{user `vm_name`}} --name vagrant --hostpath {{user `share_path`}} --readonly --automount --transient"
-        },
-        {
             "type": "powershell",
             "environment_vars": [
                 "INSTALLER_TYPE=EXE",
-                "INSTALL_FROM=FILE",
+                "INSTALL_FROM=URL",
                 "INSTALLER_DISPLAYNAME=Windows Assessment and Deployment Kit - Windows 10",
-                "INSTALL_EXE_ARGUMENTS=/quiet /features OptionId.DeploymentTools OptionId.ImagingAndConfigurationDesigner OptionId.ICDConfigurationDesigner OptionId.UserStateMigrationTool",
+                "INSTALL_EXE_ARGUMENTS=/quiet /layout {{user `temp_folder`}}\\ADKoffline",
                 "INSTALLER_URI={{user `adk_installer_uri`}}",
-                "INSTALLER_NAME=adksetup.exe"
+                "INSTALLER_NAME=adksetup.exe",
+                "POST_INSTALL=compress",
+                "POST_INSTALL_COMPRESS_PATH={{user `temp_folder`}}\\ADKoffline",
+                "POST_INSTALL_COMPRESS_OUTPUT_PATH={{user `temp_folder`}}\\ADKoffline.zip"
             ],
             "scripts": [
                 "{{template_dir}}/../../provisioners/powershell/install-from.ps1"
             ]
-        },
-        {
-            "type": "powershell",
-            "environment_vars": [
-                "UPDATES_FOLDER={{user `updates_folder`}}",
-                "ISO_OUTPUT_NAME={{user `iso_output_name`}}"
-            ],
-            "script": "{{template_dir}}/../../provisioners/powershell/slipstream-iso.ps1"
         }
     ],
     "post-processors": [{
         "type": "artifice",
         "files": [
-            "C:\\slipstream\\{{user `iso_output_name`}}",
-            "C:\\slipstream\\robocopy.log",
-            "C:\\Windows\\Logs\\DISM\\dism.log"
+            "C:\\slipstream\\{{user `temp_folder`}}\\ADKoffline.zip"
         ]
     }, {
         "only": ["virtualbox-iso"],
         "type": "vagrant",
         "keep_input_artifact": true,
         "compression_level": 9,
-        "output": "{{user `guest_os_type`}}_{{isotime \"2006-01-02\"}}.box",
+        "output": "{{user `guest_os_type`}}_ADKoffline_{{isotime \"2006-01-02\"}}.box",
         "vagrantfile_template": "{{template_dir}}/vagrantfile.template"
     }]
 }

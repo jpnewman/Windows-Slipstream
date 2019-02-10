@@ -1,6 +1,5 @@
-# Author: John Paul Newman
-
-$ErrorActionPreference = "Stop"
+﻿$ErrorActionPreference = "Stop"
+$VerbosePreference = "Continue"
 
 # Default Values
 $script:install_from = 'url'
@@ -19,6 +18,10 @@ $script:file_scheme = 'file://'
 
 $script:allowed_exit_codes = @(0, 3010)
 
+$script:post_install = if ([String]::IsNullOrEmpty($env:POST_INSTALL)) { '' } else { $env:POST_INSTALL }
+$script:post_install_compress_path = if ([String]::IsNullOrEmpty($env:POST_INSTALL_COMPRESS_PATH)) { ''} else { $env:POST_INSTALL_COMPRESS_PATH }
+$script:post_install_compress_output_path = if ([String]::IsNullOrEmpty($env:POST_INSTALL_COMPRESS_OUTPUT_PATH)) { '' } else { $env:POST_INSTALL_COMPRESS_OUTPUT_PATH }
+
 function Write-Header {
     param (
         [string]$Message,
@@ -26,9 +29,9 @@ function Write-Header {
         [string]$Underline='='
     )
 
-    Write-Host ($Overline * 80)
-    Write-Host $Message
-    Write-Host ($Underline * 80)
+    Write-Verbose ("$Overline" * 80)
+    Write-Verbose "$Message"
+    Write-Verbose ("$Underline" * 80)
 }
 
 function Write-SubHeader {
@@ -49,49 +52,49 @@ function Get-Arguments {
     if (!([String]::IsNullOrEmpty($env:INSTALL_FROM))) {
         $script:install_from = $env:INSTALL_FROM.ToLower()
     }
-    Write-Host "INSTALL_FROM: '${env:INSTALL_FROM}' ($script:install_from)"
+    Write-Verbose "INSTALL_FROM: '${env:INSTALL_FROM}' ($script:install_from)"
 
     if ($script:install_from -eq 'url' -or $script:install_from -eq 'file') {
         if ([String]::IsNullOrEmpty($env:INSTALLER_URI)) {
             throw "ERROR: Environment variable needs to be set: INSTALLER_URI"
         }
-        Write-Host "`$env:INSTALLER_URI = `"$env:INSTALLER_URI`""
+        Write-Verbose "`$env:INSTALLER_URI = `"$env:INSTALLER_URI`""
     } elseif ($script:install_from -eq 's3') {
         if ([String]::IsNullOrEmpty($env:S3_BUCKET)) {
             throw "ERROR: Environment variable needs to be set: S3_BUCKET"
         }
-        Write-Host "`$env:S3_BUCKET = `"$env:S3_BUCKET`""
+        Write-Verbose "`$env:S3_BUCKET = `"$env:S3_BUCKET`""
 
         if ([String]::IsNullOrEmpty($env:S3_KEY) -and [String]::IsNullOrEmpty($env:S3_FOLDER)) {
             throw "ERROR: Environment variable needs to be set: S3_KEY OR S3_FOLDER"
         }
-        Write-Host "`$env:S3_KEY = `"$env:S3_KEY`""
+        Write-Verbose "`$env:S3_KEY = `"$env:S3_KEY`""
 
         if (!([String]::IsNullOrEmpty($env:AWS_REGION))) {
             $script:aws_region = $env:AWS_REGION
         }
-        Write-Host "AWS_REGION: '${env:AWS_REGION}' ($script:aws_region)"
+        Write-Verbose "AWS_REGION: '${env:AWS_REGION}' ($script:aws_region)"
     }
 
     if (!([String]::IsNullOrEmpty($env:INSTALLER_TYPE))) {
         $script:installer_type = $env:INSTALLER_TYPE.ToLower()
     }
-    Write-Host "INSTALLER_TYPE: '${env:INSTALLER_TYPE}' ($script:installer_type)"
+    Write-Verbose "INSTALLER_TYPE: '${env:INSTALLER_TYPE}' ($script:installer_type)"
 
     if ([String]::IsNullOrEmpty($env:INSTALLER_DISPLAYNAME)) {
         throw "ERROR: Environment variable needs to be set: INSTALLER_DISPLAYNAME"
     }
-    Write-Host "`$env:INSTALLER_DISPLAYNAME = `"$env:INSTALLER_DISPLAYNAME`""
+    Write-Verbose "`$env:INSTALLER_DISPLAYNAME = `"$env:INSTALLER_DISPLAYNAME`""
 
     if (!([String]::IsNullOrEmpty($env:ALLOWED_EXIT_CODES))) {
         $script:allowed_exit_codes = [String]$env:ALLOWED_EXIT_CODES -split ','
     }
-    Write-Host "`$env:ALLOWED_EXIT_CODES = `"$env:ALLOWED_EXIT_CODES`""
+    Write-Verbose "`$env:ALLOWED_EXIT_CODES = `"$env:ALLOWED_EXIT_CODES`""
 
     if (!([String]::IsNullOrEmpty($env:TEMP_FOLDER))) {
         $script:temp_folder = $env:TEMP_FOLDER
     }
-    Write-Host "TEMP_FOLDER: '${env:TEMP_FOLDER}' ($script:temp_folder)"
+    Write-Verbose "TEMP_FOLDER: '${env:TEMP_FOLDER}' ($script:temp_folder)"
 
     if (!([String]::IsNullOrEmpty($env:DISPLAY_NAME_MATCH))) {
         try {
@@ -100,7 +103,7 @@ function Get-Arguments {
             throw "ERROR: Converting `$env:DISPLAY_NAME_MATCH ('$env:DISPLAY_NAME_MATCH') to boolean!"
         }
     }
-    Write-Host "FORCE_DOWNLOAD: '${env:FORCE_DOWNLOAD}' ($script:display_name_match)"
+    Write-Verbose "FORCE_DOWNLOAD: '${env:FORCE_DOWNLOAD}' ($script:display_name_match)"
 
     if (!([String]::IsNullOrEmpty($env:FORCE_DOWNLOAD))) {
         try {
@@ -109,7 +112,7 @@ function Get-Arguments {
             throw "ERROR: Converting `$env:FORCE_DOWNLOAD ('$env:FORCE_DOWNLOAD') to boolean!"
         }
     }
-    Write-Host "FORCE_DOWNLOAD: '${env:FORCE_DOWNLOAD}' ($script:force_download)"
+    Write-Verbose "FORCE_DOWNLOAD: '${env:FORCE_DOWNLOAD}' ($script:force_download)"
 
     if (!([String]::IsNullOrEmpty($env:FORCE_INSTALL))) {
         try {
@@ -118,17 +121,17 @@ function Get-Arguments {
             throw "ERROR: Converting `$env:FORCE_INSTALL ('$env:FORCE_INSTALL') to boolean!"
         }
     }
-    Write-Host "FORCE_INSTALL: '${env:FORCE_INSTALL}' ($script:force_install)"
+    Write-Verbose "FORCE_INSTALL: '${env:FORCE_INSTALL}' ($script:force_install)"
 
     if (@('file', 'url', 's3') -notcontains $script:install_from) {
         throw "ERROR: `$env:INSTALL_FROM unsupported value: $script:install_from"
     }
 
     if (@('msi', 'exe', 'iso', 'msu') -notcontains $script:installer_type) {
-        Write-Host "WARNING: `$env:INSTALLER_TYPE unsupported value: $script:installer_type . This step will download file only if accepted."
+        Write-Verbose "WARNING: `$env:INSTALLER_TYPE unsupported value: $script:installer_type . This step will download file only if accepted."
     }
 
-    Write-Host ('-' * 80)
+    Write-Verbose ('-' * 80)
 }
 
 # function Get-Uninstall: http://stackoverflow.com/questions/4753051/how-do-i-check-if-a-particular-msi-is-installed
@@ -155,7 +158,7 @@ function Get-Uninstall
     Sort-Object DisplayName
 }
 
-function Run-CMD {
+function Invoke-Cmd {
     param (
         $Program,
         $Arguments,
@@ -163,7 +166,7 @@ function Run-CMD {
         $Password
     )
 
-    Write-Host "$Program $Arguments"
+    Write-Verbose "$Program $Arguments"
 
     $pinfo = New-Object System.Diagnostics.ProcessStartInfo
     $pinfo.FileName = $Program
@@ -188,14 +191,14 @@ function Run-CMD {
     $stdout = $p.StandardOutput.ReadToEnd()
     $stderr = $p.StandardError.ReadToEnd()
 
-    Write-Host "Stdout: $stdout"
-    Write-Host "Stderr: $stderr"
-    Write-Host "Exit Code: $($p.ExitCode)"
+    Write-Verbose "Stdout: $stdout"
+    Write-Verbose "Stderr: $stderr"
+    Write-Verbose "Exit Code: $($p.ExitCode)"
 
-    Return $p
+    return $p
 }
 
-function Download-FromUrl
+function Get-FromUrl
 {
     param (
         [string]$TempFolder,
@@ -218,8 +221,8 @@ function Download-FromUrl
                 (New-Object System.Net.WebClient).DownloadFile($env:INSTALLER_URI, $localFile)
                 break
             } catch [System.Exception] {
-                Write-Host "WARNING: Problem downloading file: $env:INSTALLER_URI"
-                Write-Host "$_"
+                Write-Verbose "WARNING: Problem downloading file: $env:INSTALLER_URI"
+                Write-Verbose "$_"
                 $retries--
                 if ($retries -eq 0) {
                     throw "ERROR: Downloading file: $($_.Exception.Message)"
@@ -239,7 +242,7 @@ function Download-FromUrl
     }
 }
 
-function Download-FromS3
+function Get-FromS3
 {
     param (
         [string]$AWSRegion,
@@ -286,25 +289,24 @@ function Download-FromS3
             }
             else {
                 $objects = Get-S3Object -BucketName $env:S3_BUCKET -KeyPrefix $env:S3_FOLDER @arguments
-
-                foreach($object in $objects) {
+                foreach ($object in $objects) {
                     $localFileName = $object.Key -replace "$($env:S3_FOLDER)/", ''
                     if ($localFileName -ne '') {
                         $localFilePath = Join-Path $TempFolder $localFileName
 
                         if ($object.Size -ne 0) {
-                            Write-Host "Downloading: $localFilePath"
+                            Write-Verbose "Downloading: $localFilePath"
                             Copy-S3Object -BucketName $env:S3_BUCKET -Key $object.Key -LocalFile $localFilePath @arguments | Out-Null
                         }
                         else {
-                            Write-Host "Skipping download due to zero size: $localFilePath"
+                            Write-Verbose "Skipping download due to zero size: $localFilePath"
                         }
                     }
                 }
             }
         } catch {
             throw "ERROR: $_"
-        }        
+        }
     }
 
     return @{
@@ -319,7 +321,7 @@ function Install-Certs {
 
         $certs = $env:INSTALL_CERTS -Split ','
         foreach ($cert in $certs) {
-            Run-CMD -Program 'certutil.exe' -Arguments "-addstore -f `"TrustedPublisher`" $cert"
+            Invoke-Cmd -Program 'certutil.exe' -Arguments "-addstore -f `"TrustedPublisher`" $cert"
         }
     }
 }
@@ -341,7 +343,7 @@ function Install-MSI
     $logFile = Join-Path -Path $path -ChildPath $logFilename
     $arguments = "/qn /i $InstallerPath /norestart /log $logFile"
     try {
-      Run-CMD -Program 'msiexec.exe' -Arguments $arguments
+      Invoke-Cmd -Program 'msiexec.exe' -Arguments $arguments
     } catch {
       throw $_
     } finally {
@@ -360,13 +362,14 @@ function Install-EXE
     Write-SubHeader "Installing Exe"
 
     if (!(Test-Path $InstallerPath)) {
+        Write-Verbose "ERROR: Installer cannot be found: $InstallerPath"
         throw "ERROR: Installer cannot be found: $InstallerPath"
     }
 
     $arguments = " "
     if (!([String]::IsNullOrEmpty($env:INSTALL_EXE_ARGUMENTS))) {
 
-        if ([String]$env:INSTALL_EXE_ARGUMENTS_KEYVALUEPAIR -ne "true") { 
+        if ([String]$env:INSTALL_EXE_ARGUMENTS_KEYVALUEPAIR -ne "true") {
             $arguments = "$env:INSTALL_EXE_ARGUMENTS"
         }
         else {
@@ -374,24 +377,23 @@ function Install-EXE
             $argPairsArray = [String]$env:INSTALL_EXE_ARGUMENTS -split ';'
             $argKeyValuesHash = @{}
 
-            $argPairsArray | foreach {
+            $argPairsArray | ForEach-Object {
                 $keyValuePair = $_ -split ','
                 $argKeyValuesHash.Add($keyValuePair[0], $keyValuePair[1])
             }
 
-            $argKeyValuesHash.GetEnumerator() | foreach {
+            $argKeyValuesHash.GetEnumerator() | ForEach-Object {
                 $arguments += " $($_.Key)=$($_.Value)"
             }
-
         }
     }
 
     try {
         if (!([String]::IsNullOrEmpty($env:USER_NAME)) -and !([String]::IsNullOrEmpty($env:USER_PASSWORD))) {
-            $result = (Run-CMD -Program "$InstallerPath" -Arguments $arguments -UserName $env:USER_NAME -Password $env:USER_PASSWORD)
+            $result = (Invoke-Cmd -Program "$InstallerPath" -Arguments $arguments -UserName $env:USER_NAME -Password $env:USER_PASSWORD)
         }
         else {
-            $result = (Run-CMD -Program "$InstallerPath" -Arguments $arguments) 
+            $result = (Invoke-Cmd -Program "$InstallerPath" -Arguments $arguments)
         }
 
         if ($script:allowed_exit_codes -notcontains $result.ExitCode) {
@@ -400,7 +402,7 @@ function Install-EXE
         }
 
         if ($result.ExitCode -eq 3010) {
-            Write-Host "Catch EXITCODE 3010. Installation was successful but reboot required. Restarting Windows..."
+            Write-Verbose "Catch EXITCODE 3010. Installation was successful but reboot required. Restarting Windows..."
             Restart-Computer
             break
         }
@@ -428,8 +430,8 @@ function Install-ISO
     try {
 
         $mountResult = Mount-DiskImage $InstallerPath -PassThru
-        $driveLetterMounted = ($mountResult | Get-Volume).DriveLetter    
-        Write-Host "Image mounted on $driveLetterMounted from path: $InstallerPath"
+        $driveLetterMounted = ($mountResult | Get-Volume).DriveLetter
+        Write-Verbose "Image mounted on $driveLetterMounted from path: $InstallerPath"
 
         $mountedDriveInstallerPath = "$($driveLetterMounted):\$($env:INSTALLER_NAME)"
 
@@ -458,10 +460,10 @@ function Install-MSU
 
     $arguments = "/install $InstallerPath /quiet /norestart"
     try {
-      Run-CMD -Program 'wusa.exe' -Arguments $arguments
+      Invoke-Cmd -Program 'wusa.exe' -Arguments $arguments
     } catch {
       throw $_
-    } 
+    }
 }
 
 function Get-InstalledApp
@@ -475,23 +477,55 @@ function Get-InstalledApp
     Write-SubHeader "Getting Installed App"
 
     if ([String]::IsNullOrEmpty($DisplayName)) {
-        Write-Host "WARN: `$env:DISPLAY_NAME"
+        Write-Verbose "WARN: `$env:DISPLAY_NAME"
         return $null
     }
-    
+
     if ($MatchDisplayName) {
-        $installed = ($InstalledApps | Where { $_.DisplayName -match $DisplayName })
+        $installed = ($InstalledApps | Where-Object { $_.DisplayName -match $DisplayName })
     } else {
-        $installed = ($InstalledApps | Where { $_.DisplayName -eq $DisplayName })
+        $installed = ($InstalledApps | Where-Object { $_.DisplayName -eq $DisplayName })
     }
 
     if ($installed) {
-        Write-Host "Application '${env:INSTALLER_DISPLAYNAME}' is already installed: -"
-        Write-Host ($installed | Out-String)
+        Write-Verbose "Application '${env:INSTALLER_DISPLAYNAME}' is already installed: -"
+        Write-Verbose ($installed | Out-String)
         return $installed
     }
 
     return $null
+}
+
+function Expand-File
+{
+    param (
+        [string]$Path
+    )
+
+    if ([String]::IsNullOrEmpty($env:INSTALLER_NAME) -eq $false -and [System.IO.Path]::GetExtension("$Path").ToLower() -eq '.zip') {
+        Write-SubHeader "Expanding file: $Path"
+
+        $filename = [System.IO.Path]::GetFileNameWithoutExtension($Path)
+        $dist = Join-Path -Path "$script:temp_folder" -ChildPath $filename
+        if (!(Test-Path -Path "$dist")) {
+            Expand-Archive -Path "$Path" -DestinationPath "$script:temp_folder"
+        }
+
+        return Join-Path -Path "$dist" -ChildPath "$env:INSTALLER_NAME"
+    }
+
+    return $Path
+}
+
+function Compress-Folder
+{
+    param (
+        [string]$Path,
+        [string]$DestinationPath
+    )
+    Write-SubHeader "Compressing file: $Path"
+
+    Compress-Archive -Path $Path -DestinationPath $DestinationPath
 }
 
 function Main
@@ -507,15 +541,16 @@ function Main
                                       -DisplayName $env:INSTALLER_DISPLAYNAME `
                                       -MatchDisplayName $script:display_name_match
 
-    if ($InstalledApps -eq $null -or $script:force_install) {
+    if ($null -eq $InstalledApps -or $script:force_install) {
         if ($script:install_from -eq 'file') {
             $localFile = $env:INSTALLER_URI -replace $script:file_scheme, ''
         } elseif ($script:install_from -eq 'url') {
-            $localFile = (Download-FromUrl $script:temp_folder $script:force_download).LocalFile
+            $localFile = (Get-FromUrl $script:temp_folder $script:force_download).LocalFile
         } elseif ($script:install_from -eq 's3') {
-            $localFile = (Download-FromS3 $script:aws_region $script:temp_folder $script:force_download).LocalFile
+            $localFile = (Get-FromS3 $script:aws_region $script:temp_folder $script:force_download).LocalFile
         }
 
+        $localFile = Expand-File -Path $localFile
         Install-Certs
 
         if ($script:installer_type -eq 'msi') {
@@ -523,9 +558,13 @@ function Main
         } elseif ($script:installer_type -eq 'exe') {
             Install-EXE $localFile
         } elseif ($script:installer_type -eq 'iso') {
-            Install-ISO $localFile        
+            Install-ISO $localFile
         } elseif ($script:installer_type -eq 'msu') {
             Install-MSU $localFile
+        }
+
+        if ($script:post_install -eq 'compress') {
+            Compress-Folder -Path $script:post_install_compress_path -DestinationPath $script:post_install_compress_output_path
         }
     }
 

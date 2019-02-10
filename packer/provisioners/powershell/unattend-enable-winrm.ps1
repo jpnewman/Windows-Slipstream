@@ -1,4 +1,4 @@
-# These settings enable Basic unencrypted authentication for WinRM
+﻿# These settings enable Basic unencrypted authentication for WinRM
 # They also set large limits to the amount of memory per shell and number of shells per user
 
 Set-Item -Path WSMan:\localhost\Service\Auth\Basic -Value $true
