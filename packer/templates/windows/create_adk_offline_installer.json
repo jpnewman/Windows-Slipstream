@@ -19,7 +19,6 @@
         "shutdown_timeout": "1h",
 
         "autounattend": "{{template_dir}}/../../files/answer_files/server_2016/with_updates/Autounattend.xml",
-        "iso_output_name": "WindowsServer2016_Patched.iso",
 
         "temp_folder": "C:\\Windows\\Temp",
 

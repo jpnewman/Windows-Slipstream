@@ -9,7 +9,7 @@ Set-StrictMode -Version 2.0
 $ErrorActionPreference = "Stop"
 $VerbosePreference = "Continue"
 
-$script:outputISOName = if ([String]::IsNullOrEmpty($env:ISO_OUTPUT_NAME)) { "WindowsServer2016_Patched.iso" } else { $env:ISO_OUTPUT_NAME }
+$script:outputISOPath = if ([String]::IsNullOrEmpty($env:ISO_OUTPUT_PATH)) { "WindowsServer2016_Patched.iso" } else { $env:ISO_OUTPUT_PATH }
 $script:WorkingSubFolders = @(
     'original',
     'mount'
@@ -296,7 +296,7 @@ function Format-ISO {
 
     try {
         $sourcePath = Join-Path -Path "$WorkingFolder" -ChildPath "original"
-        $targetPath = Join-Path -Path "$WorkingFolder" -ChildPath "${script:outputISOName}"
+        $targetPath = "${script:outputISOPath}"
         Invoke-Cmd -Program oscdimg.exe -Arguments "-bootdata:`"2#p0,e,bboot\Etfsboot.com#pEF,e,befi\Microsoft\boot\Efisys.bin`" -u1 -udfver102 $sourcePath $targetPath"
     } catch {
         throw $_
