@@ -25,19 +25,19 @@ Download any extra MSU and CAB files to folder like ```packer/templates/windows/
 
 Creating an ADK offline installer can speed-up build times.
 
-~~~
+```bash
 cd packer/templates/windows
-~~~
+```
 
-~~~
+```bash
 packer build --on-error=ask -var headless=false -var "iso_url=packer_cache\SW_DVD9_Win_Svr_STD_Core_and_DataCtr_Core_2016_64Bit_English_-3_MLF_X21-30350.ISO" -var "iso_checksum=EEB465C08CF7243DBAAA3BE98F5F9E40" -var "guest_os_type=Windows2016_64" -var "autounattend=../../files/answer_files/server_2016/without_updates/Autounattend.xml" create_adk_offline_installer.json
-~~~
+```
 
-- or -
+-- or --
 
 > Windows Powershell, without Packer
 
-~~~
+```powershell
 $env:INSTALLER_TYPE="EXE"
 $env:INSTALL_FROM="URL"
 $env:INSTALLER_DISPLAYNAME="Windows Assessment and Deployment Kit - Windows 10"
@@ -50,7 +50,7 @@ $env:POST_INSTALL_COMPRESS_PATH="C:\Windows\Temp\ADKoffline"
 $env:POST_INSTALL_COMPRESS_OUTPUT_PATH="C:\Windows\Temp\ADKoffline.zip"
 
 packer/provisioners/powershell/install-from.ps1
-~~~
+```
 
 #### Use offline installers
 
@@ -58,23 +58,23 @@ packer/provisioners/powershell/install-from.ps1
 
 2. Copy ```VBoxGuestAdditions``` to ```packer/files/offline```.
 
-~~~
+```bash
 cp /Applications/VirtualBox.app/Contents/MacOS/VBoxGuestAdditions.iso packer/files/offline/
-~~~
+```
 
 3. Use offline installers: -
 
-~~~
+```bash
 cd packer/templates/windows
-~~~
+```
 
-~~~
+```bash
 packer validate -var headless=false -var 'iso_url=packer_cache/WindowsServer2016_Patched.iso' -var 'iso_checksum=932d3d7f14a3a938bb8ff73f486d64b9' -var 'guest_os_type=Windows2016_64' -var 'autounattend=../../files/answer_files/server_2016/without_updates/Autounattend.xml' -var "adk_installer_uri=file://\\\\VBOXSVR\\vagrant\\Offline\ADKoffline.zip" windows_slipstream.json
-~~~
+```
 
-~~~
+```bash
 time PACKER_LOG=1 PACKER_LOG_PATH="windows_slipstream.log" packer build --on-error=ask -var headless=false -var 'iso_url=packer_cache/WindowsServer2016_Patched.iso' -var 'iso_checksum=932d3d7f14a3a938bb8ff73f486d64b9' -var 'guest_os_type=Windows2016_64' -var 'autounattend=../../files/answer_files/server_2016/without_updates/Autounattend.xml' windows_slipstream.json
-~~~
+```
 
 > Without Windows updates.
 
@@ -88,9 +88,9 @@ Ensure that ```packer``` and ```VBoxManage``` are in the environment variables `
 
 e.g.
 
-~~~
+```powershell
 C:\Program Files\Oracle\VirtualBox
-~~~
+```
 
 ### Environment Variables for ```slipstream-iso.ps1```
 
@@ -104,14 +104,14 @@ C:\Program Files\Oracle\VirtualBox
 
 #### Example ```INSTALL_LIST_FILE``` file
 
-~~~
+```
 # Windows2016_64
 
 # Updates are installed in the below order.
 KB4465659
 KB4091664
 KB4480977
-~~~
+```
 
 > Each uncommented line matches the first file found that contains the line text.
 > If this file does not exist in the root of the ```UPDATES_FOLDER``` all MSU and CAB files in the folder tree will be installed.
@@ -129,86 +129,86 @@ KB4480977
 
 #### Generate MD5 from ISO for ```iso_checksum```
 
-~~~
+```bash
 md5 packer/templates/windows/en_windows_server_2016_vl_x64_dvd_11636701.iso
-~~~
+```
 
 > Powershell
 
-~~~
+```powershell
 Get-FileHash .\packer\templates\windows\packer_cache\SW_DVD9_Win_Svr_STD_Core_and_DataCtr_Core_2016_64Bit_English_-3_MLF_X21-30350.ISO -Algorithm MD5
-~~~
+```
 
 #### List VirtualBox Windows Guest Types for ```guest_os_type```
 
-~~~
+```bash
 VBoxManage list ostypes | grep -e '^ID' | sed -E -e "s/^ID:[[:blank:]]+//g" | grep -e 'Windows'
-~~~
+```
 
 ## Run
 
-~~~
+```bash
 cd packer/templates/windows
-~~~
+```
 
 ### validate
 
 *e.g.*
 
-~~~
+```bash
 packer validate -var headless=false -var 'iso_url=packer_cache/en_windows_server_2016_vl_x64_dvd_11636701.iso' -var 'iso_checksum=e3779d4b1574bf711b063fe457b3ba63' -var 'guest_os_type=Windows2016_64' windows_slipstream.json
-~~~
+```
 
 > Powershell
 
-~~~
+```bash
 packer validate -var headless=false -var "iso_url=packer_cache\SW_DVD9_Win_Svr_STD_Core_and_DataCtr_Core_2016_64Bit_English_-3_MLF_X21-30350.ISO" -var "iso_checksum=EEB465C08CF7243DBAAA3BE98F5F9E40" -var "guest_os_type=Windows2016_64" windows_slipstream.json
-~~~
+```
 
 ### build, debug
 
 *e.g.*
 
-~~~
+```bash
 packer build --on-error=ask -var headless=false -var 'iso_url=packer_cache/en_windows_server_2016_vl_x64_dvd_11636701.iso' -var 'iso_checksum=e3779d4b1574bf711b063fe457b3ba63' -var 'guest_os_type=Windows2016_64' windows_slipstream.json
-~~~
+```
 
 > Powershell
 
-~~~
+```powershell
 packer build --on-error=ask -var headless=false -var "iso_url=packer_cache\SW_DVD9_Win_Svr_STD_Core_and_DataCtr_Core_2016_64Bit_English_-3_MLF_X21-30350.ISO" -var "iso_checksum=EEB465C08CF7243DBAAA3BE98F5F9E40" -var "guest_os_type=Windows2016_64" windows_slipstream.json
-~~~
+```
 
 ### build, timed debug
 
 *e.g.*
 
-~~~
+```bash
 time PACKER_LOG=1 PACKER_LOG_PATH="windows_slipstream.log" packer build --on-error=ask -var headless=false -var 'iso_url=packer_cache/en_windows_server_2016_vl_x64_dvd_11636701.iso' -var 'iso_checksum=e3779d4b1574bf711b063fe457b3ba63' -var 'guest_os_type=Windows2016_64' windows_slipstream.json
-~~~
+```
 
 > Powershell (not timed)
 
-~~~
+```powershell
 $env:PACKER_LOG=1
 $env:PACKER_LOG_PATH="windows_slipstream.log"
 
 packer build -var headless=false -var "iso_url=packer_cache\SW_DVD9_Win_Svr_STD_Core_and_DataCtr_Core_2016_64Bit_English_-3_MLF_X21-30350.ISO" -var "iso_checksum=EEB465C08CF7243DBAAA3BE98F5F9E40" -var "guest_os_type=Windows2016_64" windows_slipstream.json
-~~~
+```
 
 ### Build, timed debug without updates
 
 *e.g.*
 
-~~~
+```bash
 time PACKER_LOG=1 PACKER_LOG_PATH="windows_slipstream.log" packer build --on-error=ask -var headless=false -var 'iso_url=packer_cache/WindowsServer2016_Patched.iso' -var 'iso_checksum=932d3d7f14a3a938bb8ff73f486d64b9' -var 'guest_os_type=Windows2016_64' -var 'autounattend=../../files/answer_files/server_2016/without_updates/Autounattend.xml' --force windows_slipstream.json
-~~~
+```
 
 > Powershell (not timed)
 
-~~~
+```powershell
 $env:PACKER_LOG=1
 $env:PACKER_LOG_PATH="windows_slipstream.log"
 
 packer build --on-error=ask -var headless=false -var "iso_url=packer_cache\SW_DVD9_Win_Svr_STD_Core_and_DataCtr_Core_2016_64Bit_English_-3_MLF_X21-30350.ISO" -var "iso_checksum=EEB465C08CF7243DBAAA3BE98F5F9E40" -var "guest_os_type=Windows2016_64" -var "autounattend=../../files/answer_files/server_2016/without_updates/Autounattend.xml" windows_slipstream.json
-~~~
+```
