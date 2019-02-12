@@ -1,41 +1,53 @@
 
 # Windows Slipstream
 
+## Creating updated ISO from an existing ISO
+
 This repository contains an example of using Packer to create a Windows ISO image with slipstreamed updates.
 
 The idea is to use Packer and Vagrant to slipstream updates into an existing ISO. This is done by creating a VirtualBox OS from the ISO, updating it, and then slipstreaming the updates into a new ISO.
 
 ## Why vagrant is used
 
-Vagrant is used as it allows the loading and updating of the latest / previous ISO. This means that the updates can be installed from the updated Windows OS (i.e. ```C:\Windows\SoftwareDistribution\Download\```) and a new ISO created with them. Making the update process very meta.
+Vagrant is used as it allows the loading and updating of the latest / previous ISO. This means that the updates can be applied from the updated Windows OS (i.e. ```C:\Windows\SoftwareDistribution\Download\```) and a new ISO created with them. Making the update process very meta.
 
-## Create updated ISO from an existing ISO
+# Setup
 
-## Setup
+## Download Windows ISO
 
-### Download Windows ISO
+Download the latest ISO (e.g. 'Windows 2016') into folder ```packer/templates/windows/packer_cache```.
 
-Download the latest ISO (e.g. 'Windows 2016') into folder ```packer/templates/windows```.
-
-### Download any extra updates
-
-Download any extra MSU and CAB files to folder like ```packer/templates/windows/Updates/Windows2016_64```.
-
-### Create ADK offline installer
-
-Creating an ADK offline installer can speed-up build times.
+e.g.
 
 ```bash
-cd packer/templates/windows
+packer/templates/windows/packer_cache/en_windows_server_2016_vl_x64_dvd_11636701.iso
 ```
+
+## Download any extra updates
+
+Download any extra MSU and CAB files to folder ```packer/templates/windows/packer_cache/Updates/Windows2016_64```.
+
+## Create ADK offline installer
+
+Creating an offline installer for "Windows Assessment and Deployment Kit" (ADK) can speed-up build times.
+
+### Build via packer
 
 ```bash
-packer build --on-error=ask -var headless=false -var "iso_url=packer_cache\SW_DVD9_Win_Svr_STD_Core_and_DataCtr_Core_2016_64Bit_English_-3_MLF_X21-30350.ISO" -var "iso_checksum=EEB465C08CF7243DBAAA3BE98F5F9E40" -var "guest_os_type=Windows2016_64" -var "autounattend=../../files/answer_files/server_2016/without_updates/Autounattend.xml" create_adk_offline_installer.json
+cd packer/templates/windows/
 ```
 
--- or --
+*e.g.*
 
-> Windows Powershell, without Packer
+```bash
+packer build --on-error=ask -var headless=false -var "iso_url=packer_cache/en_windows_server_2016_vl_x64_dvd_11636701.iso" -var "iso_checksum=e3779d4b1574bf711b063fe457b3ba63" -var "guest_os_type=Windows2016_64" -var "autounattend=../../files/answer_files/server_2016/without_updates/Autounattend.xml" create_adk_offline_installer.json
+```
+
+> Change variables as needed!
+
+### Alternatively, build using Powershell on Windows without Packer
+
+*e.g.*
 
 ```powershell
 $env:INSTALLER_TYPE="EXE"
@@ -52,47 +64,37 @@ $env:POST_INSTALL_COMPRESS_OUTPUT_PATH="C:\Windows\Temp\ADKoffline.zip"
 packer/provisioners/powershell/install-from.ps1
 ```
 
-#### Use offline installers
+## Get Oracle Installer Cert
 
-1. Create ADK offline installer and move ```ADKoffline.zip``` to ```packer/pcaker_cache/Offline```.
+This cert can be exported from a Windows machine where "Oracle VM VirtualBox Guest Additions" was previously installed and placed in folder ```packer/files/certs```.
 
-2. Copy ```VBoxGuestAdditions``` to ```packer/files/offline```.
+## Generate MD5 from ISO for ```iso_checksum```
 
-```bash
-cp /Applications/VirtualBox.app/Contents/MacOS/VBoxGuestAdditions.iso packer/files/offline/
-```
-
-3. Use offline installers: -
+#### Bash
 
 ```bash
-cd packer/templates/windows
+md5 packer/templates/windows/packer_cache/en_windows_server_2016_vl_x64_dvd_11636701.iso
 ```
 
-```bash
-packer validate -var headless=false -var 'iso_url=packer_cache/WindowsServer2016_Patched.iso' -var 'iso_checksum=932d3d7f14a3a938bb8ff73f486d64b9' -var 'guest_os_type=Windows2016_64' -var 'autounattend=../../files/answer_files/server_2016/without_updates/Autounattend.xml' -var "adk_installer_uri=file://\\\\VBOXSVR\\vagrant\\Offline\ADKoffline.zip" windows_slipstream.json
+#### Powershell
+
+```powershell
+Get-FileHash .\packer\templates\windows\packer_cache\SW_DVD9_Win_Svr_STD_Core_and_DataCtr_Core_2016_64Bit_English_-3_MLF_X21-30350.ISO -Algorithm MD5
 ```
 
-```bash
-time PACKER_LOG=1 PACKER_LOG_PATH="windows_slipstream.log" packer build --on-error=ask -var headless=false -var 'iso_url=packer_cache/WindowsServer2016_Patched.iso' -var 'iso_checksum=932d3d7f14a3a938bb8ff73f486d64b9' -var 'guest_os_type=Windows2016_64' -var 'autounattend=../../files/answer_files/server_2016/without_updates/Autounattend.xml' windows_slipstream.json
-```
+## Windows - Powershell
 
-> Without Windows updates.
-
-### Get Oracle Cert
-
-This cert can be exported from a previously manually installed Oracle VM VirtualBox Guest Additions.
-
-### Windows
-
-Ensure that ```packer``` and ```VBoxManage``` are in the environment variables ```PATH```.
+Ensure that ```packer``` and ```VBoxManage``` are in the environment variables ```$env:Path```.
 
 e.g.
 
 ```powershell
-C:\Program Files\Oracle\VirtualBox
+$env:Path = "C:\Program Files\Oracle\VirtualBox"
 ```
 
-### Environment Variables for ```slipstream-iso.ps1```
+# Variables
+
+## Environment Variables for ```slipstream-iso.ps1```
 
 |Environment Variables|Description|Default|
 |---|---|---|
@@ -102,21 +104,24 @@ C:\Program Files\Oracle\VirtualBox
 |```UPDATES_FOLDER```|Path to installer folder.||
 |```ISO_OUTPUT_PATH```|ISO output filename.|```\\\\VBOXSVR\\vagrant\\WindowsServer2016_Patched_{{isotime \"2006-01-02\"}}.iso```|
 
-#### Example ```INSTALL_LIST_FILE``` file
+### Example of ```INSTALL_LIST_FILE```
+
+Each uncommented line of the ```INSTALL_LIST_FILE``` is used to search for file paths containing the line text. Only the first matching update is applied.
+
+An example of this file is as follows: -
 
 ```
 # Windows2016_64
 
-# Updates are installed in the below order.
+# Updates will be applied in the following order.
 KB4465659
 KB4091664
 KB4480977
 ```
 
-> Each uncommented line matches the first file found that contains the line text.
-> If this file does not exist in the root of the ```UPDATES_FOLDER``` all MSU and CAB files in the folder tree will be installed.
+> If this file does not exist in the root of the ```UPDATES_FOLDER``` all MSU and CAB files in the folder tree will be applied.
 
-### Packer ```windows_slipstream.json``` template variables
+## Packer ```windows_slipstream.json``` template variables
 
 |Template Variables|Description|Default|
 |---|---|---|
@@ -127,31 +132,50 @@ KB4480977
 |```autounattend```|Path to Autounattend XML file|```{{template_dir}}/../../files/answer_files/server_2016/with_updates/Autounattend.xml```|
 |```adk_installer_uri```|URI to ADK installer|```https://go.microsoft.com/fwlink/?linkid=2026036```|
 
-#### Generate MD5 from ISO for ```iso_checksum```
-
-```bash
-md5 packer/templates/windows/en_windows_server_2016_vl_x64_dvd_11636701.iso
-```
-
-> Powershell
-
-```powershell
-Get-FileHash .\packer\templates\windows\packer_cache\SW_DVD9_Win_Svr_STD_Core_and_DataCtr_Core_2016_64Bit_English_-3_MLF_X21-30350.ISO -Algorithm MD5
-```
-
-#### List VirtualBox Windows Guest Types for ```guest_os_type```
+### List VirtualBox Windows Guest Types for ```guest_os_type```
 
 ```bash
 VBoxManage list ostypes | grep -e '^ID' | sed -E -e "s/^ID:[[:blank:]]+//g" | grep -e 'Windows'
 ```
 
-## Run
+# Using ADK offline installer
+
+1. Create ```packer_cache``` offline folder ```packer/templates/windows/packer_cache/Offline```.
+
+2. Create ADK offline installer, [Create ADK offline installer](#create-adk-offline-installer), and move output file ```ADKoffline.zip``` to ```packer_cache``` offline folder.
+
+3. Use offline installer: -  
+
+    ```bash
+    cd packer/templates/windows/
+    ```
+
+    **Validate**
+
+    *e.g.*
+
+    ```bash
+    packer validate -var headless=false -var 'iso_url=packer_cache/WindowsServer2016_Patched.iso' -var 'iso_checksum=932d3d7f14a3a938bb8ff73f486d64b9' -var 'guest_os_type=Windows2016_64' -var 'autounattend=../../files/answer_files/server_2016/without_updates/Autounattend.xml' -var "adk_installer_uri=file://\\\\VBOXSVR\\vagrant\\Offline\ADKoffline.zip" windows_slipstream.json
+    ```
+
+    **Build**
+
+    *e.g.*
+
+    ```bash
+    time PACKER_LOG=1 PACKER_LOG_PATH="windows_slipstream.log" packer build --on-error=ask -var headless=false -var 'iso_url=packer_cache/WindowsServer2016_Patched.iso' -var 'iso_checksum=932d3d7f14a3a938bb8ff73f486d64b9' -var 'guest_os_type=Windows2016_64' -var 'autounattend=../../files/answer_files/server_2016/without_updates/Autounattend.xml' windows_slipstream.json
+    ```
+
+- Change variables as needed!
+- The above examples uses an ```Autounattend.xml``` file which doesn't install updates.
+
+# Run
 
 ```bash
-cd packer/templates/windows
+cd packer/templates/windows/
 ```
 
-### validate
+**Validate**
 
 *e.g.*
 
@@ -159,13 +183,15 @@ cd packer/templates/windows
 packer validate -var headless=false -var 'iso_url=packer_cache/en_windows_server_2016_vl_x64_dvd_11636701.iso' -var 'iso_checksum=e3779d4b1574bf711b063fe457b3ba63' -var 'guest_os_type=Windows2016_64' windows_slipstream.json
 ```
 
-> Powershell
+**Validate - Powershell**
+
+*e.g.*
 
 ```bash
 packer validate -var headless=false -var "iso_url=packer_cache\SW_DVD9_Win_Svr_STD_Core_and_DataCtr_Core_2016_64Bit_English_-3_MLF_X21-30350.ISO" -var "iso_checksum=EEB465C08CF7243DBAAA3BE98F5F9E40" -var "guest_os_type=Windows2016_64" windows_slipstream.json
 ```
 
-### build, debug
+**Build 'ask on error'**
 
 *e.g.*
 
@@ -173,13 +199,15 @@ packer validate -var headless=false -var "iso_url=packer_cache\SW_DVD9_Win_Svr_S
 packer build --on-error=ask -var headless=false -var 'iso_url=packer_cache/en_windows_server_2016_vl_x64_dvd_11636701.iso' -var 'iso_checksum=e3779d4b1574bf711b063fe457b3ba63' -var 'guest_os_type=Windows2016_64' windows_slipstream.json
 ```
 
-> Powershell
+**Build 'ask on error' - Powershell**
+
+*e.g.*
 
 ```powershell
 packer build --on-error=ask -var headless=false -var "iso_url=packer_cache\SW_DVD9_Win_Svr_STD_Core_and_DataCtr_Core_2016_64Bit_English_-3_MLF_X21-30350.ISO" -var "iso_checksum=EEB465C08CF7243DBAAA3BE98F5F9E40" -var "guest_os_type=Windows2016_64" windows_slipstream.json
 ```
 
-### build, timed debug
+**Build 'ask on error' (timed)**
 
 *e.g.*
 
@@ -187,7 +215,9 @@ packer build --on-error=ask -var headless=false -var "iso_url=packer_cache\SW_DV
 time PACKER_LOG=1 PACKER_LOG_PATH="windows_slipstream.log" packer build --on-error=ask -var headless=false -var 'iso_url=packer_cache/en_windows_server_2016_vl_x64_dvd_11636701.iso' -var 'iso_checksum=e3779d4b1574bf711b063fe457b3ba63' -var 'guest_os_type=Windows2016_64' windows_slipstream.json
 ```
 
-> Powershell (not timed)
+**Build 'ask on error' (not timed) - Powershell**
+
+*e.g.*
 
 ```powershell
 $env:PACKER_LOG=1
@@ -196,7 +226,9 @@ $env:PACKER_LOG_PATH="windows_slipstream.log"
 packer build -var headless=false -var "iso_url=packer_cache\SW_DVD9_Win_Svr_STD_Core_and_DataCtr_Core_2016_64Bit_English_-3_MLF_X21-30350.ISO" -var "iso_checksum=EEB465C08CF7243DBAAA3BE98F5F9E40" -var "guest_os_type=Windows2016_64" windows_slipstream.json
 ```
 
-### Build, timed debug without updates
+**Build 'ask on error', logging and timed, without updates**
+
+By defining ```autounattend``` as ```./../files/answer_files/server_2016/without_updates/Autounattend.xml```.
 
 *e.g.*
 
@@ -204,7 +236,9 @@ packer build -var headless=false -var "iso_url=packer_cache\SW_DVD9_Win_Svr_STD_
 time PACKER_LOG=1 PACKER_LOG_PATH="windows_slipstream.log" packer build --on-error=ask -var headless=false -var 'iso_url=packer_cache/WindowsServer2016_Patched.iso' -var 'iso_checksum=932d3d7f14a3a938bb8ff73f486d64b9' -var 'guest_os_type=Windows2016_64' -var 'autounattend=../../files/answer_files/server_2016/without_updates/Autounattend.xml' --force windows_slipstream.json
 ```
 
-> Powershell (not timed)
+**Build 'ask on error' and logging, without updates - Powershell**
+
+*e.g.*
 
 ```powershell
 $env:PACKER_LOG=1
